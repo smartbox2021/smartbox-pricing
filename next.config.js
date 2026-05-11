@@ -1,6 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  serverExternalPackages: ['cheerio', 'nodemailer'],
+  experimental: {
+    serverComponentsExternalPackages: ['cheerio', 'nodemailer'],
+  },
 }
 
 module.exports = nextConfig
