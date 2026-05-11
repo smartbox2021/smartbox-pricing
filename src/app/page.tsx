@@ -1,6 +1,3 @@
-Copy everything between the triple backticks and paste it into GitHub replacing the entire page.tsx:
-'use client'
-
 import { useEffect, useState, useCallback } from 'react'
 
 type Page = 'overview' | 'changes' | 'status'
