@@ -16,7 +16,7 @@ const COMP_COLOURS = ['#c8401a', '#2563eb', '#7c3aed', '#0891b2']
 const fmt = (n: number) => `£${n.toFixed(2)}`
 
 function marketAvg(sqft: number, competitors: ScrapeResult['competitors']): number | null {
-  const vals = competitors.flatMap(c => c.prices.filter(p => p.sqft === sqft).map(p => p.perWeek))
+  const vals = (competitors || []).flatMap(c => (c.prices || []).filter(p => p.sqft === sqft).map(p => p.perWeek))
   if (!vals.length) return null
   return vals.reduce((a, b) => a + b, 0) / vals.length
 }
