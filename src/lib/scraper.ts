@@ -1,4 +1,3 @@
-Here it is — select all and replace everything in the file:
 // src/lib/scraper.ts
 // Scrapes all 5 Smartbox sites + their local competitors
 
