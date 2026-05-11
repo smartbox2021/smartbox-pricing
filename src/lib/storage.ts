@@ -1,8 +1,3 @@
-Copy everything between the triple backticks and paste it into the GitHub editor:
-// src/lib/storage.ts
-// Uses Vercel KV for storage (free tier)
-// Falls back to in-memory cache if KV not configured
-
 import type { ScrapeResult, SiteKey } from './scraper'
 
 const memStore: Record<string, string> = {}
