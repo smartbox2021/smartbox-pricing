@@ -53,7 +53,6 @@ export default function Dashboard() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  // Refetch history when site changes
   useEffect(() => {
     fetch(`/api/data?site=${activeSite}`)
       .then(r => r.json())
@@ -74,7 +73,6 @@ export default function Dashboard() {
 
   const data = sites[activeSite] as ScrapeResult | null
 
-  // Stats for active site
   let above = 0, below = 0, level = 0
   if (data) {
     const sizes = new Set([...data.smartbox.prices.map(p => p.sqft), ...data.competitors.flatMap(c => c.prices.map(p => p.sqft))])
@@ -92,13 +90,6 @@ export default function Dashboard() {
   const todayChanges = data?.changes.filter(c => c.date === data.date) || []
   const allChanges = data?.changes || []
 
-  // Network-wide stats (for sidebar badges)
-  const totalChangesToday = SITE_KEYS.reduce((sum, k) => {
-    const d = sites[k]
-    return sum + (d ? d.changes.filter(c => c.date === d.date).length : 0)
-  }, 0)
-
-  // History chart
   const chartData = history.slice().reverse().map(day => {
     const pt: Record<string, any> = {
       date: new Date(day.date + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
@@ -136,8 +127,6 @@ export default function Dashboard() {
         }
         body{background:var(--paper);color:var(--ink);font-family:'DM Sans',system-ui,sans-serif}
         .shell{display:grid;grid-template-columns:210px 1fr;min-height:100vh}
-
-        /* Sidebar */
         .sidebar{background:var(--ink);padding:22px 14px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh;overflow-y:auto}
         .logo{font-family:var(--display);font-weight:800;font-size:16px;color:white;margin-bottom:2px}
         .logo-sub{font-family:var(--mono);font-size:9px;color:#444;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:24px}
@@ -149,31 +138,23 @@ export default function Dashboard() {
         .nav-badge{background:#f39c12;color:white;font-size:9px;padding:1px 5px;border-radius:8px;font-family:var(--mono)}
         .sidebar-footer{margin-top:auto;padding-top:14px;border-top:1px solid #1a1a1a;font-family:var(--mono);font-size:10px;color:#333;line-height:1.8}
         .dot-ok{display:inline-block;width:6px;height:6px;border-radius:50%;background:#27ae60;margin-right:4px}
-
-        /* Main */
         .main{padding:26px 30px}
         .page-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:22px;gap:12px}
         .page-title{font-family:var(--display);font-size:24px;font-weight:700;letter-spacing:-0.5px}
         .page-date{font-family:var(--mono);font-size:11px;color:#888;margin-top:3px}
         .refresh-btn{padding:8px 14px;background:var(--ink);color:white;border:none;border-radius:4px;font-family:var(--mono);font-size:11px;cursor:pointer;white-space:nowrap}
         .refresh-btn:disabled{opacity:0.5}
-
-        /* Alert */
         .alert{border-radius:0 6px 6px 0;padding:12px 16px;margin-bottom:20px;display:flex;gap:10px}
         .alert.amber{background:var(--amber-bg);border-left:4px solid #f39c12}
         .alert.green{background:var(--green-bg);border-left:4px solid #27ae60}
         .alert-title{font-size:13px;font-weight:600;margin-bottom:2px}
         .alert-body{font-size:12px;color:#666}
-
-        /* Stats */
         .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:22px}
         .stat-card{background:white;border:1px solid var(--paper-3);border-radius:6px;padding:13px 15px}
         .stat-label{font-family:var(--mono);font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#999;margin-bottom:5px}
         .stat-value{font-family:var(--display);font-size:28px;font-weight:700;line-height:1;margin-bottom:2px}
         .stat-value.red{color:var(--red)} .stat-value.green{color:var(--green)} .stat-value.amber{color:var(--amber)} .stat-value.blue{color:#2563eb}
         .stat-sub{font-size:11px;color:#aaa}
-
-        /* Table */
         .section-title{font-family:var(--display);font-size:14px;font-weight:600;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
         .section-tag{font-family:var(--mono);font-size:10px;color:#aaa;font-weight:400}
         .table-card{background:white;border:1px solid var(--paper-3);border-radius:6px;overflow:hidden;margin-bottom:22px;overflow-x:auto}
@@ -191,25 +172,19 @@ export default function Dashboard() {
         .price-up{color:var(--red)!important} .price-down{color:var(--green)!important} .price-na{color:#ddd!important}
         .badge{display:inline-block;font-family:var(--mono);font-size:10px;padding:2px 6px;border-radius:3px;margin-left:5px}
         .badge.above{background:var(--red-bg);color:var(--red)} .badge.below{background:var(--green-bg);color:var(--green)} .badge.level{background:var(--paper-2);color:#888}
-
-        /* Status */
         .status-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:22px}
         .status-card{background:white;border:1px solid var(--paper-3);border-radius:6px;padding:12px 14px;display:flex;align-items:center;gap:10px}
         .status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
         .status-dot.ok{background:#27ae60} .status-dot.fail{background:var(--red)}
         .status-name{font-size:13px;font-weight:500}
         .status-detail{font-family:var(--mono);font-size:10px;color:#aaa;margin-top:1px}
-
-        /* Loading */
         .loading-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:var(--ink)}
         .loading-logo{font-family:var(--display);font-size:28px;font-weight:800;color:white;margin-bottom:8px}
         .loading-sub{font-family:var(--mono);font-size:11px;color:#444;letter-spacing:1px}
-
         .empty{text-align:center;padding:40px;color:#aaa;font-size:13px}
         .chart-card{background:white;border:1px solid var(--paper-3);border-radius:6px;padding:20px;margin-bottom:22px}
       `}</style>
 
-      {/* SIDEBAR */}
       <aside className="sidebar">
         <div className="logo">Smartbox</div>
         <div className="logo-sub">Pricing Intel</div>
@@ -240,7 +215,6 @@ export default function Dashboard() {
         </div>
       </aside>
 
-      {/* MAIN */}
       <main className="main">
         <div className="page-head">
           <div>
@@ -261,7 +235,6 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* OVERVIEW */}
         {page === 'overview' && data && <>
           <div className={`alert ${todayChanges.length ? 'amber' : 'green'}`}>
             <div>
@@ -322,7 +295,6 @@ export default function Dashboard() {
           </div>
         </>}
 
-        {/* CHANGES */}
         {page === 'changes' && <>
           <div className="section-title">All recorded price changes</div>
           <div className="table-card">
@@ -348,7 +320,6 @@ export default function Dashboard() {
           </div>
         </>}
 
-        {/* HISTORY */}
         {page === 'history' && <>
           <div className="section-title">Price history — 50 sq ft weekly <span className="section-tag">{SITE_LABELS[activeSite]}</span></div>
           {chartData.length < 2
@@ -370,7 +341,6 @@ export default function Dashboard() {
           }
         </>}
 
-        {/* STATUS */}
         {page === 'status' && data && <>
           <div className="section-title">Scrape status — {SITE_LABELS[activeSite]}</div>
           <div className="status-grid">
