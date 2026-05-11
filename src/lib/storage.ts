@@ -1,38 +1,71 @@
+Copy everything between the triple backticks and paste it into the GitHub editor:
 // src/lib/storage.ts
-import { promises as fs } from 'fs'
-import path from 'path'
-import type { ScrapeResult } from './scraper'
-import type { SiteKey } from './scraper'
+// Uses Vercel KV for storage (free tier)
+// Falls back to in-memory cache if KV not configured
 
-const DATA_DIR = path.join(process.cwd(), 'data')
+import type { ScrapeResult, SiteKey } from './scraper'
 
-async function ensureDir() {
-  await fs.mkdir(DATA_DIR, { recursive: true })
+const memStore: Record<string, string> = {}
+
+async function kvSet(key: string, value: string) {
+  try {
+    const url = process.env.KV_REST_API_URL
+    const token = process.env.KV_REST_API_TOKEN
+    if (!url || !token) { memStore[key] = value; return }
+    await fetch(`${url}/set/${encodeURIComponent(key)}`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(value),
+    })
+  } catch { memStore[key] = value }
 }
 
-function filePath(siteKey: SiteKey, date: string) {
-  return path.join(DATA_DIR, `${siteKey}-${date}.json`)
+async function kvGet(key: string): Promise<string | null> {
+  try {
+    const url = process.env.KV_REST_API_URL
+    const token = process.env.KV_REST_API_TOKEN
+    if (!url || !token) return memStore[key] || null
+    const res = await fetch(`${url}/get/${encodeURIComponent(key)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) return memStore[key] || null
+    const data = await res.json()
+    return data.result || null
+  } catch { return memStore[key] || null }
+}
+
+async function kvKeys(pattern: string): Promise<string[]> {
+  try {
+    const url = process.env.KV_REST_API_URL
+    const token = process.env.KV_REST_API_TOKEN
+    if (!url || !token) return Object.keys(memStore).filter(k => k.startsWith(pattern.replace('*','')))
+    const res = await fetch(`${url}/keys/${encodeURIComponent(pattern)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    if (!res.ok) return []
+    const data = await res.json()
+    return data.result || []
+  } catch { return [] }
 }
 
 export async function saveResult(siteKey: SiteKey, result: ScrapeResult) {
-  await ensureDir()
-  await fs.writeFile(filePath(siteKey, result.date), JSON.stringify(result, null, 2))
+  const key = `smartbox:${siteKey}:${result.date}`
+  const latest = `smartbox:${siteKey}:latest`
+  const val = JSON.stringify(result)
+  await kvSet(key, val)
+  await kvSet(latest, val)
 }
 
 export async function loadResult(siteKey: SiteKey, date: string): Promise<ScrapeResult | null> {
-  try {
-    return JSON.parse(await fs.readFile(filePath(siteKey, date), 'utf-8'))
-  } catch { return null }
+  const raw = await kvGet(`smartbox:${siteKey}:${date}`)
+  if (!raw) return null
+  try { return JSON.parse(raw) } catch { return null }
 }
 
 export async function loadLatest(siteKey: SiteKey): Promise<ScrapeResult | null> {
-  await ensureDir()
-  const files = (await fs.readdir(DATA_DIR))
-    .filter(f => f.startsWith(`${siteKey}-`) && f.endsWith('.json'))
-    .sort().reverse()
-  if (!files.length) return null
-  const date = files[0].replace(`${siteKey}-`, '').replace('.json', '')
-  return loadResult(siteKey, date)
+  const raw = await kvGet(`smartbox:${siteKey}:latest`)
+  if (!raw) return null
+  try { return JSON.parse(raw) } catch { return null }
 }
 
 export async function loadAllLatest(): Promise<Record<string, ScrapeResult | null>> {
@@ -42,20 +75,21 @@ export async function loadAllLatest(): Promise<Record<string, ScrapeResult | nul
 }
 
 export async function loadHistory(siteKey: SiteKey, days = 30): Promise<ScrapeResult[]> {
-  await ensureDir()
-  const files = (await fs.readdir(DATA_DIR))
-    .filter(f => f.startsWith(`${siteKey}-`) && f.endsWith('.json'))
-    .sort().reverse().slice(0, days)
-  const results = await Promise.all(
-    files.map(f => loadResult(siteKey, f.replace(`${siteKey}-`, '').replace('.json', '')))
-  )
+  const pattern = `smartbox:${siteKey}:2*`
+  const keys = await kvKeys(pattern)
+  const sorted = keys.sort().reverse().slice(0, days)
+  const results = await Promise.all(sorted.map(async k => {
+    const raw = await kvGet(k)
+    if (!raw) return null
+    try { return JSON.parse(raw) } catch { return null }
+  }))
   return results.filter(Boolean) as ScrapeResult[]
 }
 
 export async function getYesterdayPrices(siteKey: SiteKey): Promise<Record<string, Record<number, number>>> {
-  const d = new Date()
-  d.setDate(d.getDate() - 1)
-  const dateStr = d.toISOString().split('T')[0]
+  const yesterday = new Date()
+  yesterday.setDate(yesterday.getDate() - 1)
+  const dateStr = yesterday.toISOString().split('T')[0]
   const result = await loadResult(siteKey, dateStr)
   if (!result) return {}
   const out: Record<string, Record<number, number>> = {}
