@@ -11,7 +11,7 @@
     "next": "15.3.3",
     "react": "^18",
     "react-dom": "^18",
-    "cheerio": "^1.0.0",
+    "node-html-parser": "^6.1.13",
     "nodemailer": "^6.9.13",
     "recharts": "^2.12.7"
   },
